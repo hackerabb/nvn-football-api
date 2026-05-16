@@ -3,7 +3,7 @@ import requests
 
 app = Flask(__name__)
 
-# مفتاحك الصحيح والمجاني مدمج وجاهز
+# مفتاحك المدمج والجاهز
 API_KEY = "e91d644564bb177175b5c6dfef6b0db9"
 
 @app.after_request
@@ -76,3 +76,6 @@ def get_live_bets():
         
     except Exception as e:
         return jsonify({"status": "success", "category": category, "count": 0, "results": [], "error_log": str(e)})
+
+# السطر السحري لمنع خطأ استيراد الخادم (مهم جداً)
+app.index = app
