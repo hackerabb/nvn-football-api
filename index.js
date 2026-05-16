@@ -20,7 +20,8 @@ app.get('/live', async (req, res) => {
         if (category === "basketball") sportKey = "basketball";
         if (category === "tennis") sportKey = "tennis";
 
-        const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h`;
+        // تعديل الرابط لطلب جميع الأسواق المتاحة (h2h, btts, totals, spreads, outlines)
+        const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h,totals,spreads,btts&oddsFormat=decimal`;
         
         const response = await axios.get(url, { timeout: 12000 });
         const jsonData = response.data;
@@ -33,30 +34,23 @@ app.get('/live', async (req, res) => {
                 const bookmakers = game.bookmakers || [];
 
                 if (team1 && team2 && bookmakers.length > 0) {
-                    const markets = bookmakers[0].markets || [];
-                    if (markets.length > 0) {
-                        const outcomes = markets[0].outcomes || [];
-                        if (outcomes.length >= 2) {
-                            const o1 = outcomes[0].price || 0;
-                            const o2 = outcomes[1].price || 0;
+                    // نجمع كل الأسواق المتاحة للمباراة من أول موقع مراهنات موثوق
+                    const marketsData = {};
+                    
+                    bookmakers[0].markets.forEach(mkt => {
+                        const marketKey = mkt.key; // h2h, totals, btts...
+                        marketsData[marketKey] = mkt.outcomes.map(out => ({
+                            name: out.name,
+                            price: out.price,
+                            point: out.point || null // للأهداف والمجاميع والهانديكاب
+                        }));
+                    });
 
-                            if (o1 > 0 && o2 > 0) {
-                                const prediction = o1 < o2 ? "W1" : "W2";
-                                const minOdd = Math.min(o1, o2);
-                                
-                                let prob = Math.floor(100 - (minOdd * 15));
-                                prob = Math.max(60, Math.min(prob, 92));
-
-                                results.push({
-                                    match: `${team1} vs ${team2}`,
-                                    odds1: o1.toFixed(2),
-                                    odds2: o2.toFixed(2),
-                                    prediction: prediction,
-                                    probability: `${prob}%`
-                                });
-                            }
-                        }
-                    }
+                    results.push({
+                        match: `${team1} vs ${team2}`,
+                        commence_time: game.commence_time,
+                        all_markets: marketsData
+                    });
                 }
             });
         }
